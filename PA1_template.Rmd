@@ -8,18 +8,73 @@ output:
 
 ## Loading and preprocessing the data
 
+ library(ggplot2)
+ # Loading the data 
+ if(!file.exists("getdata-projectfiles-UCI HAR Dataset.zip")) {
+        temp <- tempfile()
+        download.file("http://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip",temp)
+        unzip(temp)
+        unlink(temp)
+}
 
+activityData <- read.csv("./activity.csv")
+summary(activityData)
+head(activityData)
 
 ## What is mean total number of steps taken per day?
 
+ames(activityData)
 
+pairs(activityData)
 
+SPA <- aggregate(steps ~ date, activityData, sum, na.rm=TRUE)
+hist(SPA$steps)
+meanSPA <- mean(SPA$steps)
+meanSPA
 ## What is the average daily activity pattern?
+medianSPA <- median(SPA$steps)
+medianSPA
+stepsPerInterval<-aggregate(steps~interval, data=activityData, mean, na.rm=TRUE)
+plot(steps~interval, data=stepsPerInterval, type="l")
+intervalWithMaxNbSteps <- stepsPerInterval[which.max(stepsPerInterval$steps),]$interval
+intervalWithMaxNbSteps
 
 
 
 ## Imputing missing values
 
-
+# Missing Values
+totalValuesMissings <- sum(is.na(activityData$steps))
+totalValuesMissings
+getMeanStepsPerInterval<-function(interval){
+    stepsPerInterval[stepsPerInterval$interval==interval,]$steps
+}
+activityDataNoNA<-activityData
+for(i in 1:nrow(activityDataNoNA)){
+    if(is.na(activityDataNoNA[i,]$steps)){
+        activityDataNoNA[i,]$steps <- getMeanStepsPerInterval(activityDataNoNA[i,]$interval)
+    }
+}
+totalSPANoNA <- aggregate(steps ~ date, data=activityDataNoNA, sum)
+hist(totalSPANoNA$steps)
+meanSPANoNA <- mean(totalSPANoNA$steps)
+medianSPANoNA <- median(totalSPANoNA$steps)
 
 ## Are there differences in activity patterns between weekdays and weekends?
+activityDataNoNA$date <- as.Date(strptime(activityDataNoNA$date, format="%Y-%m-%d"))
+activityDataNoNA$day <- weekdays(activityDataNoNA$date)
+for (i in 1:nrow(activityDataNoNA)) {
+    if (activityDataNoNA[i,]$day %in% c("Saturday","Sunday")) {
+        activityDataNoNA[i,]$day<-"WEEK-END"
+    }
+    else{
+        activityDataNoNA[i,]$day<-"WEEK-DAY"
+    }
+}
+stepsByDay <- aggregate(activityDataNoNA$steps ~ activityDataNoNA$interval + activityDataNoNA$day, activityDataNoNA, mean)
+names(stepsByDay) <- c("interval", "day", "steps")
+library(lattice)
+xyplot(steps ~ interval | day, stepsByDay, type = "l", layout = c(1, 2), 
+    xlab = "Interval", ylab = "Number of steps")
+
+
